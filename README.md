@@ -15,3 +15,6 @@ dir "C:\Users\%USERNAME%\AppData\Local\Microsoft\WinGet\Packages" /s /b | findst
 
 6. Run the downloader
 python yt_download.py
+
+7. for browser run
+streamlit run app.py
