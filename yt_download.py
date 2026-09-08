@@ -2,320 +2,568 @@
 # 🎬 YouTube Video Downloader
 # ============================================================
 #
-# 📦 REQUIRED INSTALLATION
+# 📦 INSTALLATION
 #
-# Is program ko chalane se pehle VS Code Terminal mein
-# ye commands run karein:
+# VS Code Terminal mein ye commands run karein:
 #
-# 1️⃣ pytubefix install karein:
-#    pip install pytubefix
+# pip install pytubefix
 #
-# 2️⃣ FFmpeg install karein:
-#    winget install Gyan.FFmpeg
+# FFmpeg install karne ke liye:
 #
-# ⚠️ Agar FFmpeg already installed hai to dobara install
-# karne ki zaroorat nahi.
+# winget install Gyan.FFmpeg
 #
-# for checking
-# 3️⃣ FFmpeg --version
-
-# ager ffmpeg install ho giya hai or zip file hai to yeh use karo:
-#dir "C:\Users\1\AppData\Local\Microsoft\WinGet\Packages" /s /b | findstr /i "ffmpeg.exe"
+# FFmpeg check karne ke liye:
+#
+# ffmpeg -version
+#
+# Agar "ffmpeg is not recognized" aaye to:
+#
+# winget install Gyan.FFmpeg
+#
 # ============================================================
 
 
 from pytubefix import YouTube
 import subprocess
 import os
+import shutil
+import re
 
 
 # ============================================================
-# ⚙️ FFMPEG PATH
+# ⚙️ DOWNLOAD FOLDER
 # ============================================================
 #
-# Ye path aapke computer par FFmpeg ka path hai.
+# Video automatically Windows ke Downloads folder mein jayegi.
 #
-# Agar kisi doosre computer par ye program use karna ho,
-# to FFmpeg install karne ke baad us computer ka FFmpeg
-# path yahan set karna hoga.
+# Example:
+# C:\Users\YourName\Downloads
 #
 # ============================================================
 
-FFMPEG = r"C:\Users\1\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build\bin\ffmpeg.exe"
+DOWNLOAD_FOLDER = os.path.join(
+    os.path.expanduser("~"),
+    "Downloads"
+)
+
+# Agar Downloads folder nahi hai to create kar do
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 
 # ============================================================
-# 🔗 YOUTUBE VIDEO URL
+# ⚙️ FIND FFMPEG AUTOMATICALLY
 # ============================================================
 
-link = input("Enter your video URL: ")
+FFMPEG = shutil.which("ffmpeg")
 
 
-try:
+# Agar PATH mein FFmpeg nahi milta
+if not FFMPEG:
 
-    # YouTube video information
-    yt = YouTube(link)
-
-    print("\nTitle:", yt.title)
-
-
-    # ========================================================
-    # 🎥 QUALITY OPTIONS
-    # ========================================================
-
-    print("\nAvailable Quality Options:")
-
-    print("1. 360p")
-    print("2. 480p")
-    print("3. 720p")
-    print("4. 1080p")
-
-
-    choice = input("\nSelect quality (1-4): ")
-
-
-    # User choice ko actual resolution mein convert karna
-    quality_map = {
-
-        "1": "360p",
-        "2": "480p",
-        "3": "720p",
-        "4": "1080p"
-
-    }
-
-
-    selected_quality = quality_map.get(choice)
-
-
-    # Agar user ne wrong option select ki
-    if not selected_quality:
-
-        print("❌ Invalid choice!")
-        exit()
-
-
-    print(f"\nSelected Quality: {selected_quality}")
-    print("Searching video stream...")
-
-
-    # ========================================================
-    # 📹 REQUESTED VIDEO QUALITY
-    # ========================================================
-
-    video = (
-        yt.streams
-        .filter(
-            adaptive=True,
-            file_extension="mp4",
-            res=selected_quality
-        )
-        .first()
+    # Common WinGet location
+    winget_folder = os.path.join(
+        os.path.expanduser("~"),
+        "AppData",
+        "Local",
+        "Microsoft",
+        "WinGet",
+        "Packages"
     )
 
+    # FFmpeg executable search karna
+    for root, dirs, files in os.walk(winget_folder):
 
-    # ========================================================
-    # 🔄 AGAR SELECTED QUALITY AVAILABLE NA HO
-    # ========================================================
+        if "ffmpeg.exe" in files:
 
-    if not video:
+            FFMPEG = os.path.join(
+                root,
+                "ffmpeg.exe"
+            )
+
+            break
+
+
+# ============================================================
+# ❌ FFMPEG CHECK
+# ============================================================
+
+if not FFMPEG:
+
+    print("\n❌ FFmpeg nahi mila!")
+
+    print("\nTerminal mein ye command run karein:")
+
+    print("winget install Gyan.FFmpeg")
+
+    print("\nPhir VS Code restart karke program dobara run karein.")
+
+    input("\nPress Enter to exit...")
+
+    exit()
+
+
+# ============================================================
+# 🧹 SAFE FILE NAME
+# ============================================================
+
+def safe_filename(filename):
+
+    # Windows ke invalid characters remove karna
+    filename = re.sub(
+        r'[<>:"/\\|?*]',
+        '',
+        filename
+    )
+
+    # Extra spaces remove
+    filename = filename.strip()
+
+    # Filename bohat long na ho
+    return filename[:150]
+
+
+# ============================================================
+# 🎥 DOWNLOAD FUNCTION
+# ============================================================
+
+def download_video():
+
+    # YouTube URL
+    link = input(
+        "\n🔗 Enter YouTube URL "
+        "(exit likh kar program band karein): "
+    )
+
+    # Program exit
+    if link.lower() == "exit":
+
+        print("\n👋 Program closed. Goodbye!")
+
+        return False
+
+
+    try:
+
+        # ====================================================
+        # YouTube video information
+        # ====================================================
+
+        print("\n🔍 Getting video information...")
+
+        yt = YouTube(link)
+
+        print("\n🎬 Title:")
+        print(yt.title)
+
+
+        # ====================================================
+        # QUALITY OPTIONS
+        # ====================================================
+
+        print("\n🎥 Available Quality Options:")
+
+        print("1. 360p")
+        print("2. 480p")
+        print("3. 720p")
+        print("4. 1080p")
+
+
+        choice = input(
+            "\nSelect quality (1-4): "
+        )
+
+
+        quality_map = {
+
+            "1": "360p",
+            "2": "480p",
+            "3": "720p",
+            "4": "1080p"
+
+        }
+
+
+        selected_quality = quality_map.get(
+            choice
+        )
+
+
+        # Wrong choice
+        if not selected_quality:
+
+            print("\n❌ Invalid quality choice!")
+
+            return True
+
 
         print(
-            f"⚠️ {selected_quality} available nahi hai."
+            f"\n✅ Selected Quality: "
+            f"{selected_quality}"
         )
 
 
-        # Available resolutions check karna
-        available = []
+        # ====================================================
+        # FIND VIDEO STREAM
+        # ====================================================
+
+        print("\n🔍 Searching video stream...")
 
 
-        for stream in yt.streams:
-
-            if (
-                stream.type == "video"
-                and stream.mime_type == "video/mp4"
-                and stream.resolution
-            ):
-
-                if stream.resolution not in available:
-
-                    available.append(stream.resolution)
-
-
-        # Quality priority
-        quality_order = [
-            "1080p",
-            "720p",
-            "480p",
-            "360p"
-        ]
-
-
-        selected_index = quality_order.index(
-            selected_quality
+        video = (
+            yt.streams
+            .filter(
+                adaptive=True,
+                file_extension="mp4",
+                res=selected_quality
+            )
+            .first()
         )
 
 
-        # Lower quality automatically find karna
-        for quality in quality_order[
-            selected_index + 1:
-        ]:
+        # ====================================================
+        # FALLBACK QUALITY
+        # ====================================================
 
-            if quality in available:
+        if not video:
 
-                video = (
-                    yt.streams
-                    .filter(
-                        adaptive=True,
-                        file_extension="mp4",
-                        res=quality
+            print(
+                f"\n⚠️ {selected_quality} "
+                "available nahi hai."
+            )
+
+            available = []
+
+
+            for stream in yt.streams:
+
+                if (
+                    stream.type == "video"
+                    and stream.mime_type == "video/mp4"
+                    and stream.resolution
+                ):
+
+                    if stream.resolution not in available:
+
+                        available.append(
+                            stream.resolution
+                        )
+
+
+            quality_order = [
+                "1080p",
+                "720p",
+                "480p",
+                "360p"
+            ]
+
+
+            selected_index = quality_order.index(
+                selected_quality
+            )
+
+
+            for quality in quality_order[
+                selected_index + 1:
+            ]:
+
+                if quality in available:
+
+                    video = (
+                        yt.streams
+                        .filter(
+                            adaptive=True,
+                            file_extension="mp4",
+                            res=quality
+                        )
+                        .first()
                     )
-                    .first()
-                )
 
 
-                if video:
+                    if video:
 
-                    print(
-                        f"✅ {quality} available hai, "
-                        "ye download hogi."
-                    )
+                        print(
+                            f"\n✅ {quality} available hai."
+                        )
 
-                    break
+                        print(
+                            f"📥 {quality} download hogi."
+                        )
 
-
-    # Agar koi video stream na mile
-    if not video:
-
-        print("❌ Suitable video stream nahi mili.")
-        exit()
+                        break
 
 
-    # ========================================================
-    # 🔊 BEST MP4 AUDIO
-    # ========================================================
+        # No video found
+        if not video:
 
-    audio = (
-        yt.streams
-        .filter(
-            adaptive=True,
-            mime_type="audio/mp4"
+            print(
+                "\n❌ Suitable video stream nahi mili."
+            )
+
+            return True
+
+
+        # ====================================================
+        # BEST AUDIO
+        # ====================================================
+
+        audio = (
+            yt.streams
+            .filter(
+                adaptive=True,
+                mime_type="audio/mp4"
+            )
+            .order_by("abr")
+            .desc()
+            .first()
         )
-        .order_by("abr")
-        .desc()
-        .first()
-    )
 
 
-    # Agar audio stream na mile
-    if not audio:
+        if not audio:
 
-        print("❌ Audio stream nahi mili.")
-        exit()
+            print(
+                "\n❌ Audio stream nahi mili."
+            )
+
+            return True
 
 
-    print("\nVideo:", video.resolution)
-    print("Audio:", audio.abr)
+        print(
+            "\n📹 Video:",
+            video.resolution
+        )
+
+        print(
+            "🔊 Audio:",
+            audio.abr
+        )
+
+
+        # ====================================================
+        # SAFE VIDEO TITLE
+        # ====================================================
+
+        title = safe_filename(
+            yt.title
+        )
+
+
+        # ====================================================
+        # TEMPORARY FILES
+        # ====================================================
+
+        video_file = os.path.join(
+            DOWNLOAD_FOLDER,
+            "_temp_video.mp4"
+        )
+
+        audio_file = os.path.join(
+            DOWNLOAD_FOLDER,
+            "_temp_audio.mp4"
+        )
+
+        output_file = os.path.join(
+            DOWNLOAD_FOLDER,
+            title + ".mp4"
+        )
+
+
+        # ====================================================
+        # DOWNLOAD VIDEO
+        # ====================================================
+
+        print(
+            "\n📥 Downloading video..."
+        )
+
+
+        video.download(
+            output_path=DOWNLOAD_FOLDER,
+            filename="_temp_video.mp4"
+        )
+
+
+        # ====================================================
+        # DOWNLOAD AUDIO
+        # ====================================================
+
+        print(
+            "🔊 Downloading audio..."
+        )
+
+
+        audio.download(
+            output_path=DOWNLOAD_FOLDER,
+            filename="_temp_audio.mp4"
+        )
+
+
+        # ====================================================
+        # MERGE VIDEO + AUDIO
+        # ====================================================
+
+        print(
+            "\n🔄 Merging video + audio..."
+        )
+
+
+        subprocess.run(
+            [
+                FFMPEG,
+
+                "-y",
+
+                "-i",
+                video_file,
+
+                "-i",
+                audio_file,
+
+                "-c:v",
+                "copy",
+
+                "-c:a",
+                "aac",
+
+                output_file
+            ],
+
+            check=True
+        )
+
+
+        # ====================================================
+        # DELETE TEMP FILES
+        # ====================================================
+
+        if os.path.exists(video_file):
+
+            os.remove(video_file)
+
+
+        if os.path.exists(audio_file):
+
+            os.remove(audio_file)
+
+
+        # ====================================================
+        # SUCCESS
+        # ====================================================
+
+        print(
+            "\n========================================"
+        )
+
+        print(
+            "✅ DOWNLOAD COMPLETE!"
+        )
+
+        print(
+            "========================================"
+        )
+
+        print(
+            "\n🎬 Video:",
+            title + ".mp4"
+        )
+
+        print(
+            "\n📁 Saved in:"
+        )
+
+        print(
+            DOWNLOAD_FOLDER
+        )
+
+
+        print(
+            "\n🔁 Aap next video ka URL enter kar sakte hain."
+        )
+
+
+        return True
 
 
     # ========================================================
-    # 📁 TEMPORARY FILES
+    # ERROR HANDLING
     # ========================================================
 
-    video_file = "video.mp4"
-    audio_file = "audio.mp4"
-    output_file = "youtube_video.mp4"
+    except Exception as e:
+
+        print(
+            "\n❌ Error:",
+            e
+        )
 
 
-    # ========================================================
-    # 📥 DOWNLOAD VIDEO
-    # ========================================================
+        # Temporary files cleanup
+        if os.path.exists(video_file):
 
-    print("\n📥 Downloading video...")
-
-    video.download(
-        filename=video_file
-    )
+            try:
+                os.remove(video_file)
+            except:
+                pass
 
 
-    # ========================================================
-    # 🔊 DOWNLOAD AUDIO
-    # ========================================================
+        if os.path.exists(audio_file):
 
-    print("📥 Downloading audio...")
-
-    audio.download(
-        filename=audio_file
-    )
+            try:
+                os.remove(audio_file)
+            except:
+                pass
 
 
-    # ========================================================
-    # 🔄 MERGE VIDEO + AUDIO USING FFMPEG
-    # ========================================================
-
-    print("\n🔄 Merging video + audio...")
-
-
-    subprocess.run(
-        [
-            FFMPEG,
-
-            "-y",
-
-            "-i",
-            video_file,
-
-            "-i",
-            audio_file,
-
-            "-c:v",
-            "copy",
-
-            "-c:a",
-            "aac",
-
-            output_file
-        ],
-
-        check=True
-    )
-
-
-    # ========================================================
-    # 🗑️ TEMPORARY FILES DELETE
-    # ========================================================
-
-    if os.path.exists(video_file):
-
-        os.remove(video_file)
-
-
-    if os.path.exists(audio_file):
-
-        os.remove(audio_file)
-
-
-    # ========================================================
-    # ✅ DOWNLOAD COMPLETE
-    # ========================================================
-
-    print("\n✅ Download complete!")
-
-    print(
-        "Saved as:",
-        output_file
-    )
+        return True
 
 
 # ============================================================
-# ❌ ERROR HANDLING
+# 🚀 MAIN PROGRAM
 # ============================================================
 
-except Exception as e:
+print(
+    "\n=============================================="
+)
 
-    print("\n❌ Error:", e)
+print(
+    "🎬 YOUTUBE VIDEO DOWNLOADER"
+)
 
-# Run the code and enjoy for download video without IDM
-# py yt_download.py
-# and enter youtube video URL
-# wait some time and see the video
+print(
+    "=============================================="
+)
+
+print(
+    "\n📁 Videos will be saved in:"
+)
+
+print(
+    DOWNLOAD_FOLDER
+)
+
+print(
+    "\n💡 Multiple videos download karne ke liye"
+)
+
+print(
+    "   program ko baar-baar run karne ki zaroorat nahi."
+)
+
+print(
+    "\n💡 Program band karne ke liye URL ki jagah"
+)
+
+print(
+    "   'exit' type karein."
+)
+
+
+# ============================================================
+# 🔁 CONTINUOUS DOWNLOAD LOOP
+# ============================================================
+
+while True:
+
+    keep_running = download_video()
+
+    if not keep_running:
+
+        break
